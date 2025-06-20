@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Health Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWOcObVsBurAADqCCBAyeysVeclf53hmE",
+            authDomain: "yajnesh-projects.firebaseapp.com",
+            databaseURL: "https://yajnesh-projects-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "yajnesh-projects",
+            storageBucket: "yajnesh-projects.appspot.com",
+            messagingSenderId: "800852291561",
+            appId: "1:800852291561:web:16ad6b0a1bb7adb7116578"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Function to fetch real-time sensor data
+        function fetchSensorData() {
+            const dbRef = ref(db, "sensor_data");
+
+            get(dbRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    
+                    // Update Sensor Data
+                    document.getElementById("soil-moisture").innerText = data.soil_moisture + "%";
+                    document.getElementById("humidity").innerText = data.humidity + "%";
+                    document.getElementById("distance").innerText = data.distance + " cm";
+                    document.getElementById("temperature").innerText = data.temperature + "°C";
+                    document.getElementById("carbon-level").innerText = data.mq135;
+                    
+                    // LDR Light Condition
+                    let currentHour = new Date().getHours(); // Get current hour (0-23)
+                    let isDayTime = currentHour >= 6 && currentHour < 18; // Check if it's daytime
+                    let ldrStatus = data.ldr === 0 ? "Dark" : "Light"; // 0 = Dark, 1 = Light
+                    
+                    if (isDayTime && ldrStatus === "Dark") {
+                        document.getElementById("ldr-status").innerText = "Turn on artificial light";
+                        document.getElementById("ldr-status").style.color = "red";
+                    } else {
+                        document.getElementById("ldr-status").innerText = isDayTime ? "Light is sufficient" : "It's nighttime";
+                        document.getElementById("ldr-status").style.color = isDayTime ? "green" : "white";
+                    }
+
+                    // Check for threat when HC-SR04 distance is less than or equal to 15 cm
+                    if (data.distance <= 15) {
+                        document.getElementById("alert-message").innerText = "Threat detected: Distance is too close!";
+                        document.getElementById("alert-message").style.color = "red";
+                    } else {
+                        document.getElementById("alert-message").innerText = "";
+                    }
+
+                    // Check if soil moisture is less than 55% and remind to water plants
+                    if (data.soil_moisture < 55) {
+                        document.getElementById("soil-moisture-alert").style.display = "block";  // Show alert
+                        document.getElementById("soil-moisture-alert").innerText = "Soil moisture is low. Please water the plants!";
+                    } else {
+                        document.getElementById("soil-moisture-alert").style.display = "none";  // Hide alert if soil moisture is sufficient
+                    }
+
+                } else {
+                    console.log("No data available");
+                }
+            }).catch((error) => {
+                console.error("Error fetching data:", error);
+            });
+        }
+
+        // Auto-fetch data every 5 seconds
+        setInterval(fetchSensorData, 1000);
+        
+        // Fetch data on page load
+        window.onload = fetchSensorData;
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #3A1C71, #2E86C1);
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            font-size: 32px;
+            color: #ffcc70;
+        }
+        .sensor-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .sensor-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffdb70;
+        }
+        .alert {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .alert.red {
+            color: rgb(175, 29, 29);
+        }
+        .alert.orange {
+            color: orange;
+        }
+        .button {
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            background: #ffcc70;
+            color: black;
+            font-weight: bold;
+            transition: all 0.3s ease-in-out;
+            margin-top: 15px;
+        }
+        .button:hover {
+            background: #ffaa33;
+        }
+        /* Hide alert by default */
+        #soil-moisture-alert {
+            display: none;
+            color: rgba(182, 2, 2, 0.825);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Plant Health Monitor</h1>
+        <div class="sensor-box">
+            <h2>LDR Light Condition</h2>
+            <p id="ldr-status" class="sensor-value alert">--</p>
+        </div>
+    </div>
+</body>
+</html>
